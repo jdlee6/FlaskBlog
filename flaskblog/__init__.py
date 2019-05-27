@@ -3,25 +3,38 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_mail import Mail
-import os
+from flaskblog.config import Config
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = '403d1fa75e943fb35a9d537fdfced6ef' 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db' 
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+# remove the app variable from the initializations
+db = SQLAlchemy()
+bcrypt = Bcrypt()
+login_manager = LoginManager()
+login_manager.login_view = 'users.login'
 login_manager.login_message_category = 'info'
+mail = Mail()
 
-# set constants here so our app can actually send mail
-app.config['MAIL_SERVER'] ='smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-# need to set environment variables (in flask1_env/bin/activate because we are using a virtual environment)
-app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER')
-app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASSWORD')
-# initialize our extension
-mail = Mail(app)
+# create a function that takes an argument  for what configuration object we want to use in our application
+# Config is what we imported from config.py class
+def create_app(config_class=Config):
+    # now we're going to move the creation of our application inside of this create_app( ) function
+    # the extensions will remain outside of the function
+    # we're going to initialize the extensions at the top of our file but without the app variable
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-from flaskblog import routes
+    # copy and paste the extensions in here 
+    # for each of these functions we will run the .init_app(app)
+    db.init_app(app)
+    bcrypt.init_app(app)
+    login_manager.init_app(app)
+    mail.init_app(app)
+
+    from flaskblog.users.routes import users
+    from flaskblog.posts.routes import posts
+    from flaskblog.main.routes import main
+    app.register_blueprint(users)
+    app.register_blueprint(posts)
+    app.register_blueprint(main)
+
+    # return the application
+    return app
